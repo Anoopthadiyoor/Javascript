@@ -1,0 +1,136 @@
+// // // // Assigment operators 
+
+var a=15
+console.log(a)
+
+a+=5;
+console.log(a)
+
+a-=3
+console.log(a)
+
+a*=4
+console.log(a)
+
+a/=3
+console.log(a)
+
+a**=2
+console.log(a)
+
+a%=3
+console.log(a)
+
+
+// // // ///  Arithemetic operators
+
+var x=2
+var y=4
+
+
+console.log('x + y =', x+y)
+console.log('x - y =', x-y)
+console.log('x * y =', x*y)
+console.log('x / y =', x/y)
+console.log('x % y =', x%y)
+
+
+// // //  // increment operators 
+
+//increment
+
+var c=4
+console.log(c)
+console.log('++c =', ++c)//
+console.log(c)
+
+console.log('c++ =' ,c++)//prints 5 and then incrimented to 6
+console.log(c)
+
+//decrement
+
+var v=5
+console.log(v)
+console.log('--v =', --v)//
+console.log(v)
+
+console.log('v-- =' ,v--)//
+console.log(v)
+
+// // // //  Comparison operators
+
+var n1=5
+var n2=6
+
+// greater than
+console.log(n1>n2)
+
+// greater tha or equal to
+console.log(n1>=n2)
+console.log(n1<n2)
+console.log(n1<=n2)
+console.log(n1==n2)
+console.log(n1!=n2)
+
+
+
+console.log(2==2);
+console.log(2== '2')
+
+console.log(2 != 2)
+console.log('hello' !='Hello')
+
+//strict equal operator
+
+console.log(2 === 2)
+console.log(2 === '2')
+
+//strict not equal operator
+console.log( 2 !== 2)
+console.log( 2 !== '2')
+
+
+// // // // logical operators
+
+g=5
+h=5
+
+console.log((g>h)&& (g==h))
+
+// logical and 
+
+console.log(true && true) //true
+console.log(true && false) //false
+console.log(false && false) //false
+console.log(false && true) //false
+
+// logical OR
+
+console.log((g>h) || (g==h))
+
+console.log(true || true) //true
+console.log(true || false) //true
+console.log(false || true) //true
+console.log(false || false) //false
+
+// logical not
+
+console.log(!true)//false
+console.log(!false)//true
+
+console.log(!1) //false (1 is truth value)
+console.log(!0) //true (0 is falsy value)
+
+console.log(!'hello') // false (non empty string is false)
+console.log(!'') // true (empty string is falsy)
+
+console.log(!null) // true
+console.log(!undefined) // true
+
+// // // // Ternary operator(?:)
+var n=9
+var result=(n%2 ==0) ? 'even': 'odd';
+console.log('the number is  ',result)
+
+
+
