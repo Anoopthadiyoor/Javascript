@@ -1,0 +1,10 @@
+// Convert miles to kilometers and kilometers to miles
+
+let miles = 10;
+let kilometers = 16.0934;
+
+let km = miles * 1.60934;
+let mi = kilometers / 1.60934;
+
+console.log(miles + " miles = " + km + " km");
+console.log(kilometers + " km = " + mi + " miles");
