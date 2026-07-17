@@ -1,0 +1,9 @@
+let usd = 5;
+let inrRate = 86;   
+
+let inr = usd * inrRate;
+console.log("USD to INR = " + inr);
+
+let amountINR = 8600;
+let usdAmount = amountINR / inrRate;
+console.log("INR to USD = " + usdAmount);
