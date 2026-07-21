@@ -1,0 +1,16 @@
+for(row=1; row<=4; row++){
+
+    var str=""
+
+    for(col=1; col<=4; col++){
+        str+="#"
+    }
+    console.log(str)
+}
+
+
+// output
+####
+####
+####
+####
