@@ -1,0 +1,42 @@
+class Bank {
+    db = {
+        1000: { acno: 1000, username: "Neer", password: 1000, balance: 5000, transaction: [] },
+        1001: { acno: 1001, username: "Laisha", password: 1001, balance: 5000, transaction: [] },
+        1002: { acno: 1002, username: "Vyom", password: 1002, balance: 3000, transaction: [] }
+    };
+
+    access = "";
+
+    valid(acno) {
+        return acno in this.db;
+    }
+
+    authenticateUser(acno, pswd) {
+        if (this.valid(acno)) {
+            let actualPassword = this.db[acno].password;
+
+            if (actualPassword === pswd) {
+                this.access = "granted";
+                this.acno = acno;
+                console.log("Access Granted");
+            } else {
+                console.log("Invalid Password");
+            }
+        } else {
+            console.log("Invalid Account Number");
+        }
+    }
+
+    getBalance(acno) {
+        if (this.access === "granted") {
+            console.log("Balance:", this.db[acno].balance);
+        } else {
+            console.log("Access Denied");
+        }
+    }
+}
+
+c1 = new Bank();
+
+c1.authenticateUser(1001, 1001);
+c1.getBalance(1001);
