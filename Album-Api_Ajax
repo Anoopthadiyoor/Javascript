@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Albums Data</title>
+
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 70%;
+            margin: 30px auto;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #ddd;
+        }
+
+        h1 {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Albums Data</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>User ID</th>
+                <th>Album ID</th>
+                <th>Title</th>
+            </tr>
+        </thead>
+
+        <tbody id="result">
+        </tbody>
+    </table>
+
+
+    <script>
+
+        // 1. Create XMLHttpRequest object
+        const response = new XMLHttpRequest();
+
+
+        // 2. Connect to API
+        response.open( "GET","https://jsonplaceholder.typicode.com/albums");
+
+
+        // 3. Set onreadystatechange
+        response.onreadystatechange = () => {
+
+            // Check whether request is completed
+            if (response.readyState == 4) {
+
+                // Check whether request was successful
+                if (response.status > 199 && response.status < 300) {
+
+                    // Convert JSON string into JavaScript array
+                    const albumarray =
+                        JSON.parse(response.responseText);
+
+                    // Display data
+                    displaydata(albumarray);
+                }
+            }
+        };
+
+
+        // 4. Send request
+        response.send();
+
+
+        // Function to display album data
+        function displaydata(albumarray) {
+
+            // Loop through the array
+            for (let album of albumarray) {
+
+                console.log(album);
+
+                // Create HTML row
+                let htmldata = `
+                    <tr>
+                        <td>${album.userId}</td>
+                        <td>${album.id}</td>
+                        <td>${album.title}</td>
+                    </tr>
+                `;
+
+                // Add row to table
+                document.getElementById("result").innerHTML += htmldata;
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>b
