@@ -1,0 +1,33 @@
+let students = [
+    {
+        name: "Anoop",
+        age: 22,
+        course: "MCA"
+    },
+    {
+        name: "Rahul",
+        age: 21,
+        course: "BCA"
+    },
+    {
+        name: "Arun",
+        age: 23,
+        course: "MCA"
+    }
+];
+
+// Display the complete array
+console.log(students);
+
+// Access the first object
+console.log(students[0]);
+
+// Access a property
+console.log(students[0].name);
+
+// Display all students
+students.forEach(function(student) {
+    console.log("Name:", student.name);
+    console.log("Age:", student.age);
+    console.log("Course:", student.course);
+});
