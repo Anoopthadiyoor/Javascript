@@ -1,0 +1,217 @@
+/ Here is a question that has your code as the exact answer:
+
+---
+
+*Advanced JavaScript Challenge: Build a Reactive SPH Fluid Simulator*
+
+Write a single-file, module-based, zero-dependency HTML + JavaScript program that simulates a 2D fluid using Smoothed Particle Hydrodynamics (SPH).
+
+Your solution MUST implement:
+
+*1. Reactive Config System:*
+Use a `Proxy` to wrap a config object containing `numParticles: 800`, `gravity: 0.18`, `viscosity: 0.04`, `stiffness: 0.8`, `restDensity: 12`, `h: 18` (smoothing radius), and `dt: 1/60`. On set, it must dispatch a `CustomEvent` named `config-change` with the property and value in `detail`.
+
+*2. Spatial Hash Grid Optimization:*
+Implement a `SpatialHash` class to avoid O(n²) neighbor searches.
+- `hash(x,y)` -> string key `${(x/cellSize)|0},${(y/cellSize)|0}`
+- `clear()`, `insert(particle)`, `query(p, r)` which returns all particles in the 3x3 neighborhood around `p` based on `Math.ceil(r/cellSize)`.
+
+*3. Particle & SPH Physics Engine:*
+- A `Particle` class with `x, y, vx, vy, fx, fy, density, pressure`. Initialize vx/vy with `(Math.random()-0.5)_2`.
+- An `SPHSystem` class that creates 800 particles in a 400x200 area.
+- Implement the Poly6 kernel `W(r,h)` = `315/(64_PI_h^9) _ (h² - r²)³` with a cache keyed by `r.toFixed(1)`, and its gradient `gradW` = `-945/(32_PI_h^9) _ (h² - r²)²`.
+- Implement a generator method `_stepGenerator()` with 4 distinct yields: `hashed`, `density`, `forces`, `integrated` that performs:
+  a) Clear and rebuild the hash grid
+  b) Calculate density by summing `W` over neighbors and pressure as `stiffness _ (density - restDensity)`
+  c) Calculate pressure force `-(pi.pressure + pj.pressure)/(2_pj.density)` and viscosity force `viscosity _ (pj.v - pi.v)/pj.density _ W`
+  d) Integrate with `vx += fx/density _ dt`, handle wall collisions by damping `0.6` against `innerWidth/innerHeight`.
+
+*4. Renderer & Interactivity:*
+- Canvas full-screen with `id="c"` and a `#hud` div fixed top-left with `color:#8ab4ff` and monospace font.
+- Background `#05070f` with trail effect using `rgba(5,7,15,0.25)`.
+- Render loop using `requestAnimationFrame` that advances the physics by calling `stepper.next()` 4 times per frame.
+- Color particles by velocity using `hsl(210 + speed_12, 90%, 60%)`.
+- On `pointermove` with mouse button pressed, attract particles within radius 80 by adding `dx*0.05` to velocity.
+- HUD must show particle count, grid cell count, and average density.
+
+The final output must be a single runnable `.html` file with `<style> body{margin:0;background:#05070f;overflow:hidden} </style>`.
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { margin:0; background:#05070f; overflow:hidden; }
+  canvas { display:block; }
+  #hud { position:fixed; top:12px; left:12px; color:#8ab4ff; font:12px monospace; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<script type="module">
+// --- 1. REACTIVE CONFIG (Proxy + Observer) ---
+const config = new Proxy({
+  numParticles: 800,
+  gravity: 0.18,
+  viscosity: 0.04,
+  stiffness: 0.8,
+  restDensity: 12,
+  h: 18, // smoothing radius
+  dt: 1/60
+}, {
+  set(t,p,v){ t[p]=v; dispatchEvent(new CustomEvent('config-change',{detail:{p,v}})); return true; }
+});
+
+// --- 2. SPATIAL HASH GRID (O(n) neighbor search) ---
+class SpatialHash {
+  constructor(cellSize){ this.cellSize = cellSize; this.map = new Map(); }
+  hash(x,y){ return `${(x/this.cellSize)|0},${(y/this.cellSize)|0}`; }
+  clear(){ this.map.clear(); }
+  insert(p){
+    const key = this.hash(p.x,p.y);
+    if(!this.map.has(key)) this.map.set(key, []);
+    this.map.get(key).push(p);
+  }
+  query(p, r){
+    const res = [];
+    const cr = Math.ceil(r/this.cellSize);
+    const bx = (p.x/this.cellSize)|0, by = (p.y/this.cellSize)|0;
+    for(let x=-cr;x<=cr;x++) for(let y=-cr;y<=cr;y++){
+      const bucket = this.map.get(`${bx+x},${by+y}`);
+      if(bucket) res.push(...bucket);
+    }
+    return res;
+  }
+}
+
+// --- 3. PARTICLE SYSTEM ---
+class Particle {
+  constructor(x,y){
+    this.x=x; this.y=y;
+    this.vx=(Math.random()-0.5)*2; this.vy=(Math.random()-0.5)*2;
+    this.fx=0; this.fy=0; this.density=0; this.pressure=0;
+  }
+}
+
+class SPHSystem {
+  constructor(){
+    this.particles = Array.from({length: config.numParticles},
+      () => new Particle(Math.random()*400+100, Math.random()*200));
+    this.grid = new SpatialHash(config.h);
+    this.kernelCache = new Map();
+  }
+  // Poly6 Kernel
+  W(r,h){
+    if(r>h) return 0;
+    const key = r.toFixed(1);
+    if(this.kernelCache.has(key)) return this.kernelCache.get(key);
+    const v = 315/(64*Math.PI*Math.pow(h,9)) * Math.pow(h*h - r*r, 3);
+    this.kernelCache.set(key,v);
+    return v;
+  }
+  gradW(rx,ry,r,h){
+    if(r===0 || r>h) return [0,0];
+    const coeff = -945/(32*Math.PI*Math.pow(h,9)) * Math.pow(h*h - r*r, 2);
+    return [coeff*rx, coeff*ry];
+  }
+
+  *stepGenerator(){
+    while(true){
+      // Phase 1: Build hash
+      this.grid.clear();
+      for(const p of this.particles) this.grid.insert(p);
+      yield 'hashed';
+
+      // Phase 2: Density & Pressure
+      for(const pi of this.particles){
+        let dens = 0;
+        for(const pj of this.grid.query(pi, config.h)){
+          const dx = pi.x - pj.x, dy = pi.y - pj.y;
+          dens += this.W(Math.hypot(dx,dy), config.h);
+        }
+        pi.density = Math.max(dens, config.restDensity);
+        pi.pressure = config.stiffness * (pi.density - config.restDensity);
+      }
+      yield 'density';
+
+      // Phase 3: Forces
+      for(const pi of this.particles){
+        let fpx=0, fpy=0, fvx=0, fvy=0;
+        for(const pj of this.grid.query(pi, config.h)){
+          if(pi===pj) continue;
+          const dx = pi.x - pj.x, dy = pi.y - pj.y;
+          const r = Math.hypot(dx,dy) || 0.01;
+          const [gx, gy] = this.gradW(dx,dy,r,config.h);
+
+          // Pressure force
+          const pTerm = -(pi.pressure + pj.pressure)/(2*pj.density);
+          fpx += pTerm * gx / pj.density;
+          fpy += pTerm * gy / pj.density;
+
+          // Viscosity force
+          fvx += config.viscosity * (pj.vx - pi.vx) / pj.density * this.W(r, config.h);
+          fvy += config.viscosity * (pj.vy - pi.vy) / pj.density * this.W(r, config.h);
+        }
+        pi.fx = fpx; pi.fy = fpy + config.gravity * pi.density + fvy;
+      }
+      yield 'forces';
+
+      // Phase 4: Integrate (Leapfrog)
+      for(const p of this.particles){
+        p.vx += (p.fx / p.density) * config.dt;
+        p.vy += (p.fy / p.density) * config.dt;
+        p.x += p.vx; p.y += p.vy;
+
+        // Boundary collision with damping
+        if(p.x<0||p.x>innerWidth){ p.vx*=-0.6; p.x=Math.max(0,Math.min(innerWidth,p.x)); }
+        if(p.y<0||p.y>innerHeight){ p.vy*=-0.6; p.y=Math.max(0,Math.min(innerHeight,p.y)); }
+      }
+      yield 'integrated';
+    }
+  }
+}
+
+// --- 4. RENDERER + MAIN LOOP ---
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+const system = new SPHSystem();
+const stepper = system.stepGenerator();
+
+function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
+resize(); addEventListener('resize', resize);
+
+let frame=0;
+(function loop(){
+  // run full physics cycle using generator
+  stepper.next(); stepper.next(); stepper.next(); stepper.next();
+
+  ctx.fillStyle='rgba(5,7,15,0.25)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // render with velocity-based color
+  for(const p of system.particles){
+    const speed = Math.hypot(p.vx,p.vy);
+    const hue = 210 + speed*12;
+    ctx.fillStyle=`hsl(${hue},90%,60%)`;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,3.5,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  if(++frame%20===0){
+    hud.textContent = `SPH Fluid | Particles: ${system.particles.length} | Grid Cells: ${system.grid.map.size} | Avg Density: ${(system.particles.reduce((a,b)=>a+b.density,0)/system.particles.length).toFixed(2)}`;
+  }
+  requestAnimationFrame(loop);
+})();
+
+// Interactivity: add pressure on click
+addEventListener('pointermove', e=>{
+  if(e.buttons!==1) return;
+  for(const p of system.particles){
+    const dx=e.clientX-p.x, dy=e.clientY-p.y, d=Math.hypot(dx,dy);
+    if(d<80){ p.vx+=dx*0.05; p.vy+=dy*0.05; }
+  }
+});
+</script>
+</body>
+</html>
