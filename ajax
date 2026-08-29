@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AJAX Example</title>
+</head>
+<body>
+
+    <h1>User Details</h1>
+
+    <button onclick="loadUser()">Load User</button>
+
+    <div id="userDetails"></div>
+
+    <script>
+        function loadUser() {
+
+            // Create an AJAX object
+            let xhr = new XMLHttpRequest();
+
+            // Open a GET request
+            xhr.open(
+                "GET",
+                "https://jsonplaceholder.typicode.com/users/1",
+                true
+            );
+
+            // What happens when the response arrives
+            xhr.onload = function () {
+
+                if (xhr.status === 200) {
+
+                    // Convert JSON response into JavaScript object
+                    let user = JSON.parse(xhr.responseText);
+
+                    // Display the data
+                    document.getElementById("userDetails").innerHTML = `
+                        <h2>${user.name}</h2>
+                        <p>Email: ${user.email}</p>
+                        <p>City: ${user.address.city}</p>
+                    `;
+
+                } else {
+                    document.getElementById("userDetails").innerHTML =
+                        "Failed to load user data.";
+                }
+            };
+
+            // Handle network errors
+            xhr.onerror = function () {
+                document.getElementById("userDetails").innerHTML =
+                    "Network error occurred.";
+            };
+
+            // Send the request
+            xhr.send();
+        }
+    </script>
+
+</body>
+</html>
