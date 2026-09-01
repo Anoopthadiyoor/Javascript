@@ -8,7 +8,6 @@ const employees = [
     [1007, "Diya", "Designer", "TVM", 40000, 3],
     [1008, "Akhil", "Developer", "Kochi", 60000, 7]
 ];
-
 //1. Print all employee names
 employees.forEach(emp => console.log(emp[1]));
 
